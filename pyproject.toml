@@ -1,0 +1,40 @@
+[project]
+name = "kubejs-string-extractor"
+version = "1.0.0"
+description = "Extract translatable strings from Minecraft modpack KubeJS scripts and output them as resource pack lang JSON files."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Ziqi Zhu", email = "kressety@163.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.1",
+]
+keywords = ["minecraft", "kubejs", "localization", "i18n", "modpack", "translation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Games/Entertainment",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Homepage = "https://github.com/zack-zzq/kubejs-string-extractor"
+Repository = "https://github.com/zack-zzq/kubejs-string-extractor"
+Issues = "https://github.com/zack-zzq/kubejs-string-extractor/issues"
+
+[project.scripts]
+kubejs-strings = "kubejs_string_extractor.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.10.0,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
