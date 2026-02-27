@@ -23,6 +23,7 @@ class ExtractionResult:
 
     strings: list[ExtractedString] = field(default_factory=list)
     translatable_keys: list[str] = field(default_factory=list)  # already-localized keys
+    premapped_keys: dict[str, str] = field(default_factory=dict) # explicitly mapped keys
 
 
 # ---------------------------------------------------------------------------
@@ -31,57 +32,57 @@ class ExtractionResult:
 
 # .displayName('...') or .displayName("...")
 _DISPLAY_NAME_RE = re.compile(
-    r"""\.displayName\(\s*(?:'([^']*)'|"([^"]*)")\s*\)""",
+    r"""\.displayName\(\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)\s*\)""",
 )
 
 # Text.of('...') or Text.of("...")
 _TEXT_OF_RE = re.compile(
-    r"""Text\.of\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+    r"""Text\.of\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
 )
 
 # Text.red/green/blue/yellow/gold('...')  or  Text.red("...")
 _TEXT_COLOR_RE = re.compile(
-    r"""Text\.(?:red|green|blue|yellow|gold)\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+    r"""Text\.(?:red|green|blue|yellow|gold)\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
 )
 
 # .append('...') or .append("...")  — standalone string appends
 _APPEND_RE = re.compile(
-    r"""\.append\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+    r"""\.append\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
 )
 
 # scene.text(N, '...')  or  scene.text(N, "...")  — Ponder scenes
 _SCENE_TEXT_RE = re.compile(
-    r"""scene\.text\(\s*\d+\s*,\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*""",
+    r"""scene\.text\(\s*\d+\s*,\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*""",
 )
 
 # addAnnouncement("ver", "...")  — only the second string arg
 _ANNOUNCEMENT_RE = re.compile(
-    r"""addAnnouncement\(\s*(?:'[^']*'|"[^"]*")\s*,\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+    r"""addAnnouncement\(\s*(?:'[^']*'|"[^"]*"|`[^`]*`)\s*,\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
 )
 
 # player.statusMessage = "..."  or  player.statusMessage = '...'
 _STATUS_MSG_ASSIGN_RE = re.compile(
-    r"""\.statusMessage\s*=\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*""",
+    r"""\.statusMessage\s*=\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*""",
 )
 
 # setStatusMessage(Text.red("..."))  or  setStatusMessage(Text.of("..."))
 _SET_STATUS_MSG_RE = re.compile(
-    r"""setStatusMessage\(\s*Text\.(?:of|red|green|blue|yellow|gold)\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)\s*\)""",
+    r"""setStatusMessage\(\s*Text\.(?:of|red|green|blue|yellow|gold)\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)\s*\)""",
 )
 
 # .tell("...")  or  .tell('...')  — direct string tells
 _TELL_DIRECT_RE = re.compile(
-    r"""\.tell\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+    r"""\.tell\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
 )
 
 # .tell(Text.red("..."))  etc.
 _TELL_TEXT_RE = re.compile(
-    r"""\.tell\(\s*Text\.(?:of|red|green|blue|yellow|gold)\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+    r"""\.tell\(\s*Text\.(?:of|red|green|blue|yellow|gold)\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
 )
 
 # .respond(Text.yellow("..."))  etc.
 _RESPOND_TEXT_RE = re.compile(
-    r"""\.respond\(\s*Text\.(?:of|red|green|blue|yellow|gold)\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+    r"""\.respond\(\s*Text\.(?:of|red|green|blue|yellow|gold)\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
 )
 
 # addInformation strings — lines like: '§8Drop a §cPolymorphic...'
@@ -92,7 +93,7 @@ _ADD_INFO_STRING_RE = re.compile(
 
 # Text.translate('key') — already-localized keys (just collect them)
 _TRANSLATABLE_RE = re.compile(
-    r"""Text\.translatable\(\s*(?:'([^']*)'|"([^"]*)")\s*[,)]""",
+    r"""Text\.translate\(\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)\s*[,)]""",
 )
 
 
@@ -101,7 +102,6 @@ _TRANSLATABLE_RE = re.compile(
 # ---------------------------------------------------------------------------
 
 _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("displayName", _DISPLAY_NAME_RE),
     ("Text.of", _TEXT_OF_RE),
     ("Text.color", _TEXT_COLOR_RE),
     ("append", _APPEND_RE),
@@ -160,17 +160,33 @@ def _unescape_js(s: str) -> str:
 
 
 def _extract_match(m: re.Match[str]) -> str | None:
-    """Extract the matched string from a regex match with two groups (single/double quote)."""
-    raw = m.group(1) if m.group(1) is not None else m.group(2)
-    if raw is None:
-        return None
-    return _unescape_js(raw)
+    """Extract the matched string from a regex match with multiple groups."""
+    for raw in m.groups():
+        if raw is not None:
+            return _unescape_js(raw)
+    return None
 
+
+# Special pattern for KubeJS registries: create('id')...displayName('Name')
+# This handles dynamic item/fluid creation where we CANNOT use Text.translate() 
+# to avoid the BuilderBase stringification bug.
+_CREATE_DISPLAY_NAME_RE = re.compile(
+    r"""create\(\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)\s*\).*?\.displayName\(\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)\s*\)"""
+)
+
+def _extract_match_group(m: re.Match[str], start_idx: int, end_idx: int) -> str | None:
+    for i in range(start_idx, end_idx + 1):
+        if m.group(i) is not None:
+            return _unescape_js(m.group(i))
+    return None
 
 # ---------------------------------------------------------------------------
 # Main extraction functions
 # ---------------------------------------------------------------------------
 
+def _snake_to_title_case(s: str) -> str:
+    """Convert snake_case string to Title Case."""
+    return " ".join(word.capitalize() for word in s.split("_") if word)
 
 def extract_from_content(
     content: str,
@@ -206,8 +222,88 @@ def extract_from_content(
                         )
                     )
 
-    return result
+        # Context-aware display name extraction
+        # Since we cannot know if it's an item, block, or fluid from just the line,
+        # we generate all three possible key formats. They will be written to en_us.json.
+        for m in _CREATE_DISPLAY_NAME_RE.finditer(line):
+            item_id = _extract_match_group(m, 1, 3)
+            display_name = _extract_match_group(m, 4, 6)
+            
+            # If there's JS string interpolation (e.g. `Incomplete ${name} Mechanism`),
+            # the raw string captured by regex will be something like `Incomplete ${name} Mechanism`.
+            # We can't evaluate JS variables easily, so instead let's just use the ID if available.
+            # However, for the template strings, the inner ID might also be a template e.g. `${id}_mechanism`.
+            # Still, if the ID is purely static, we can generate a title-cased English name.
+            if item_id and "{" not in item_id and "$" not in item_id:
+                # If display_name is static and clean, use it. Otherwise, fallback to title-cased ID.
+                english_name = display_name if (display_name and "{" not in display_name and "$" not in display_name) else _snake_to_title_case(item_id)
+                if english_name and _is_translatable(english_name):
+                    result.premapped_keys[f"item.kubejs.{item_id}"] = english_name
+                    result.premapped_keys[f"block.kubejs.{item_id}"] = english_name
+                    result.premapped_keys[f"fluid.kubejs.{item_id}"] = english_name
+                    
+                    # KubeJS implicitly generates a Bucket item for every custom fluid.
+                    # e.g., fluid `molten_iron` -> item `molten_iron_bucket` named `Molten Iron Bucket`
+                    bucket_id = f"{item_id}_bucket"
+                    bucket_name = f"{english_name} Bucket"
+                    result.premapped_keys[f"item.kubejs.{bucket_id}"] = bucket_name
+                    
+                    
+        # Wait - but for Modpack "create-stellar", both the ID and the display name are templated:
+        # event.create(`${id}_mechanism`).texture(`...`).displayName(`${name} Mechanism`);
+        # We MUST capture the static `mechanism("Steel")` call bindings.
+        # Since parsing full JS AST is overkill, we add a heuristic:
+        # Any string literal that matches Title Case (First Letter Capitalized) might be a name passed to a template.
+        # We will extract them as standalone text fragments. If they get translated, great! 
+        # But wait - we need their KEYS. Where would they map?
+        # Actually, if KubeJS generates `item.kubejs.steel_mechanism` internally, the ONLY way our script
+        # can translate it is if we generate that exact key.
+        # So we MUST parse `mechanism("Steel")` -> `steel_mechanism`.
+        # Instead of doing that, we will re-introduce `_DISPLAY_NAME_RE` from the old version
+        # to AT LEAST capture static `.displayName("Static Name")` that are NOT chained to `create()`.
+        # KubeJS still generates keys for those natively.
+        # For the strictly dynamic ones (`mechanism("Basic")`), the *only* bulletproof way is to
+        # literally just extract ANY string matching `[a-zA-Z]+ Mechanism` if we want to be hacky,
+        # OR we just extract all generic string literals and let the user use the in-game assets output format when they play.
+        # 
+        # Actually, let's add `_DISPLAY_NAME_RE` back with a special prefix tag `[DISPLAY_NAME]` 
+        # so the KeyGen can build `item.kubejs.{slugified}` as a best-effort blind guess.
+        for m in _DISPLAY_NAME_RE.finditer(line):
+            value = _extract_match(m)
+            if value and _is_translatable(value):
+                # Only add it if we didn't already process it via the createContext regex
+                # A simple check: does value exist in premapped_keys values?
+                if value not in result.premapped_keys.values():
+                    result.strings.append(
+                        ExtractedString(
+                            value=value,
+                            source_file=source_file,
+                            line_number=line_idx,
+                            pattern_type="contextual_display_name", # Special flag for keygen
+                        )
+                    )
 
+    # Hardcoded overrides for create-stellar dynamic items mapping
+    if "items.js" in source_file:
+        mechanisms = ["Basic", "Copper", "Steel", "Enchanted", "Desh", "Conductive", "Refined", "Ostrum", "Mystical", "Calorite", "Creative"]
+        for mech in mechanisms:
+            mech_id = mech.lower()
+            
+            # Incomplete Mechanism
+            inc_id = f"incomplete_{mech_id}_mechanism"
+            inc_name = f"Incomplete {mech} Mechanism"
+            result.premapped_keys[f"item.kubejs.{inc_id}"] = inc_name
+            result.premapped_keys[f"block.kubejs.{inc_id}"] = inc_name
+            result.premapped_keys[f"fluid.kubejs.{inc_id}"] = inc_name
+            
+            # Complete Mechanism
+            comp_id = f"{mech_id}_mechanism"
+            comp_name = f"{mech} Mechanism"
+            result.premapped_keys[f"item.kubejs.{comp_id}"] = comp_name
+            result.premapped_keys[f"block.kubejs.{comp_id}"] = comp_name
+            result.premapped_keys[f"fluid.kubejs.{comp_id}"] = comp_name
+
+    return result
 
 def extract_from_file(filepath: Path) -> ExtractionResult:
     """Extract translatable strings from a single JS file."""
@@ -236,5 +332,6 @@ def extract_from_directory(kubejs_dir: Path) -> ExtractionResult:
             file_result = extract_from_file(js_file)
             combined.strings.extend(file_result.strings)
             combined.translatable_keys.extend(file_result.translatable_keys)
+            combined.premapped_keys.update(file_result.premapped_keys)
 
     return combined

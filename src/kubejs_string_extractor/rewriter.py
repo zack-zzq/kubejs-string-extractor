@@ -182,7 +182,6 @@ def _replace_tell_direct(line: str, get_key) -> str:
 # ---------------------------------------------------------------------------
 
 _REPLACERS = [
-    _replace_display_name,
     _replace_text_of,
     _replace_text_color,
     _replace_append,

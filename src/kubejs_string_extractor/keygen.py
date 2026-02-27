@@ -81,7 +81,14 @@ def generate_keys(
                 continue
             seen_values[source_file].add(s.value)
             counter += 1
-            key = generate_key(s, counter, namespace)
-            result[key] = s.value
+            
+            if s.pattern_type == "contextual_display_name":
+                slug = _sanitize(s.value)
+                result[f"item.kubejs.{slug}"] = s.value
+                result[f"block.kubejs.{slug}"] = s.value
+                result[f"fluid.kubejs.{slug}"] = s.value
+            else:
+                key = generate_key(s, counter, namespace)
+                result[key] = s.value
 
     return result
