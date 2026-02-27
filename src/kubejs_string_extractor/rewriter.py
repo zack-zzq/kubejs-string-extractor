@@ -1,4 +1,4 @@
-"""Rewriter module that modifies KubeJS files to use Text.translatable() calls."""
+"""Rewriter module that modifies KubeJS files to use Text.translate() calls."""
 
 from __future__ import annotations
 
@@ -34,14 +34,14 @@ def _build_replacer(string_to_key: dict[str, str]):
 
 
 def _replace_display_name(line: str, get_key) -> str:
-    """Replace .displayName('...') with .displayName(Text.translatable('key'))."""
+    """Replace .displayName('...') with .displayName(Text.translate('key'))."""
 
     def replacer(m: re.Match) -> str:
         raw = m.group(1) if m.group(1) is not None else m.group(2)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f".displayName(Text.translatable('{key}'))"
+        return f".displayName(Text.translate('{key}'))"
 
     return re.sub(
         r"""\.displayName\(\s*(?:'([^']*)'|"([^"]*)")\s*\)""",
@@ -51,14 +51,14 @@ def _replace_display_name(line: str, get_key) -> str:
 
 
 def _replace_text_of(line: str, get_key) -> str:
-    """Replace Text.of('...') with Text.translatable('key')."""
+    """Replace Text.of('...') with Text.translate('key')."""
 
     def replacer(m: re.Match) -> str:
         raw = m.group(1) if m.group(1) is not None else m.group(2)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f"Text.translatable('{key}')"
+        return f"Text.translate('{key}')"
 
     return re.sub(
         r"""Text\.of\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
@@ -68,7 +68,7 @@ def _replace_text_of(line: str, get_key) -> str:
 
 
 def _replace_text_color(line: str, get_key) -> str:
-    """Replace Text.red('...') with Text.translatable('key').red() etc."""
+    """Replace Text.red('...') with Text.translate('key').red() etc."""
 
     def replacer(m: re.Match) -> str:
         color = m.group(1)
@@ -76,7 +76,7 @@ def _replace_text_color(line: str, get_key) -> str:
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f"Text.translatable('{key}').{color}()"
+        return f"Text.translate('{key}').{color}()"
 
     return re.sub(
         r"""Text\.(red|green|blue|yellow|gold)\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
@@ -86,14 +86,14 @@ def _replace_text_color(line: str, get_key) -> str:
 
 
 def _replace_append(line: str, get_key) -> str:
-    """Replace .append('...') with .append(Text.translatable('key'))."""
+    """Replace .append('...') with .append(Text.translate('key'))."""
 
     def replacer(m: re.Match) -> str:
         raw = m.group(1) if m.group(1) is not None else m.group(2)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f".append(Text.translatable('{key}'))"
+        return f".append(Text.translate('{key}'))"
 
     return re.sub(
         r"""\.append\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
@@ -103,7 +103,7 @@ def _replace_append(line: str, get_key) -> str:
 
 
 def _replace_scene_text(line: str, get_key) -> str:
-    """Replace scene.text(N, '...') with scene.text(N, Text.translatable('key'))."""
+    """Replace scene.text(N, '...') with scene.text(N, Text.translate('key'))."""
 
     def replacer(m: re.Match) -> str:
         number = m.group(1)
@@ -111,7 +111,7 @@ def _replace_scene_text(line: str, get_key) -> str:
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f"scene.text({number}, Text.translatable('{key}')"
+        return f"scene.text({number}, Text.translate('{key}')"
 
     return re.sub(
         r"""scene\.text\(\s*(\d+)\s*,\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*""",
@@ -121,7 +121,7 @@ def _replace_scene_text(line: str, get_key) -> str:
 
 
 def _replace_announcement(line: str, get_key) -> str:
-    """Replace addAnnouncement("ver", "...") with addAnnouncement("ver", Text.translatable('key'))."""
+    """Replace addAnnouncement("ver", "...") with addAnnouncement("ver", Text.translate('key'))."""
 
     def replacer(m: re.Match) -> str:
         version_part = m.group(1)
@@ -129,7 +129,7 @@ def _replace_announcement(line: str, get_key) -> str:
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f"addAnnouncement({version_part}, Text.translatable('{key}'))"
+        return f"addAnnouncement({version_part}, Text.translate('{key}'))"
 
     return re.sub(
         r"""addAnnouncement\(\s*('[^']*'|"[^"]*")\s*,\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
@@ -139,14 +139,14 @@ def _replace_announcement(line: str, get_key) -> str:
 
 
 def _replace_status_message_assign(line: str, get_key) -> str:
-    """Replace .statusMessage = "..." with .statusMessage = Text.translatable('key')."""
+    """Replace .statusMessage = "..." with .statusMessage = Text.translate('key')."""
 
     def replacer(m: re.Match) -> str:
         raw = m.group(1) if m.group(1) is not None else m.group(2)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f".statusMessage = Text.translatable('{key}')"
+        return f".statusMessage = Text.translate('{key}')"
 
     return re.sub(
         r"""\.statusMessage\s*=\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")""",
@@ -156,14 +156,14 @@ def _replace_status_message_assign(line: str, get_key) -> str:
 
 
 def _replace_tell_direct(line: str, get_key) -> str:
-    """Replace .tell("...") with .tell(Text.translatable('key'))."""
+    """Replace .tell("...") with .tell(Text.translate('key'))."""
 
     def replacer(m: re.Match) -> str:
         raw = m.group(1) if m.group(1) is not None else m.group(2)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f".tell(Text.translatable('{key}'))"
+        return f".tell(Text.translate('{key}'))"
 
     return re.sub(
         r"""\.tell\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
@@ -202,7 +202,7 @@ def rewrite_content(
     content: str,
     string_to_key: dict[str, str],
 ) -> tuple[str, int]:
-    """Rewrite a JS file's content, replacing hardcoded strings with Text.translatable().
+    """Rewrite a JS file's content, replacing hardcoded strings with Text.translate().
 
     Args:
         content: Original file content.
@@ -236,7 +236,7 @@ def rewrite_file(
     string_to_key: dict[str, str],
     output_dir: Path | None = None,
 ) -> RewriteResult | None:
-    """Rewrite a single JS file, replacing hardcoded strings with Text.translatable().
+    """Rewrite a single JS file, replacing hardcoded strings with Text.translate().
 
     Args:
         filepath: Path to the original JS file.

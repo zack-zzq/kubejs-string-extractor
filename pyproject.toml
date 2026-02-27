@@ -1,6 +1,6 @@
 [project]
 name = "kubejs-string-extractor"
-version = "1.0.0"
+version = "1.0.1"
 description = "Extract translatable strings from Minecraft modpack KubeJS scripts and output them as resource pack lang JSON files."
 readme = "README.md"
 license = { text = "MIT" }

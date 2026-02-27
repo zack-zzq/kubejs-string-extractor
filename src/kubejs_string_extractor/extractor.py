@@ -90,7 +90,7 @@ _ADD_INFO_STRING_RE = re.compile(
     r"""addInformation\s*\(""",
 )
 
-# Text.translatable('key') — already-localized keys (just collect them)
+# Text.translate('key') — already-localized keys (just collect them)
 _TRANSLATABLE_RE = re.compile(
     r"""Text\.translatable\(\s*(?:'([^']*)'|"([^"]*)")\s*[,)]""",
 )

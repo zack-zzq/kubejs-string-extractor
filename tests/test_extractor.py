@@ -151,7 +151,7 @@ class TestTell:
 class TestTranslatable:
     def test_extracts_keys(self):
         result = extract_from_content(
-            'Text.translatable("announcements.atm.dismiss_up_to_version", Text.blue(currentVersion.toString()))',
+            'Text.translate("announcements.atm.dismiss_up_to_version", Text.blue(currentVersion.toString()))',
             "test.js",
         )
         assert "announcements.atm.dismiss_up_to_version" in result.translatable_keys
@@ -248,43 +248,43 @@ class TestRewriter:
         mapping = {"§bMagical Soil": "kubejs.startup.custom.1"}
         result, count = rewrite_content(code, mapping)
         assert count == 1
-        assert "Text.translatable('kubejs.startup.custom.1')" in result
-        assert ".displayName(Text.translatable(" in result
+        assert "Text.translate('kubejs.startup.custom.1')" in result
+        assert ".displayName(Text.translate(" in result
 
     def test_rewrite_text_of(self):
         code = "Text.of('Place the pad down in the specified Dimension')"
         mapping = {"Place the pad down in the specified Dimension": "kubejs.client.tooltips.1"}
         result, count = rewrite_content(code, mapping)
         assert count == 1
-        assert result == "Text.translatable('kubejs.client.tooltips.1')"
+        assert result == "Text.translate('kubejs.client.tooltips.1')"
 
     def test_rewrite_text_red(self):
         code = "Text.red('Increased Energy Consumption!')"
         mapping = {"Increased Energy Consumption!": "kubejs.client.mek.1"}
         result, count = rewrite_content(code, mapping)
         assert count == 1
-        assert result == "Text.translatable('kubejs.client.mek.1').red()"
+        assert result == "Text.translate('kubejs.client.mek.1').red()"
 
     def test_rewrite_text_green(self):
         code = "Text.green('Increased Energy Capacity')"
         mapping = {"Increased Energy Capacity": "kubejs.client.mek.2"}
         result, count = rewrite_content(code, mapping)
         assert count == 1
-        assert result == "Text.translatable('kubejs.client.mek.2').green()"
+        assert result == "Text.translate('kubejs.client.mek.2').green()"
 
     def test_rewrite_scene_text(self):
         code = "scene.text(80, 'The Edges Must Be Casings', [0, 4.5, 4.5]).placeNearTarget();"
         mapping = {"The Edges Must Be Casings": "kubejs.client.fission.1"}
         result, count = rewrite_content(code, mapping)
         assert count == 1
-        assert "scene.text(80, Text.translatable('kubejs.client.fission.1')" in result
+        assert "scene.text(80, Text.translate('kubejs.client.fission.1')" in result
 
     def test_rewrite_announcement(self):
         code = 'addAnnouncement("4.0", "Added mods: Ars Creo, Ice and Fire")'
         mapping = {"Added mods: Ars Creo, Ice and Fire": "kubejs.server.ann.1"}
         result, count = rewrite_content(code, mapping)
         assert count == 1
-        assert "Text.translatable('kubejs.server.ann.1')" in result
+        assert "Text.translate('kubejs.server.ann.1')" in result
         assert '"4.0"' in result  # version preserved
 
     def test_rewrite_append(self):
@@ -292,21 +292,21 @@ class TestRewriter:
         mapping = {" for public beta testing!": "kubejs.server.ann.2"}
         result, count = rewrite_content(code, mapping)
         assert count == 1
-        assert ".append(Text.translatable('kubejs.server.ann.2'))" in result
+        assert ".append(Text.translate('kubejs.server.ann.2'))" in result
 
     def test_rewrite_status_message(self):
         code = 'player.statusMessage = "Dragon or Dragon Roost not found nearby..."'
         mapping = {"Dragon or Dragon Roost not found nearby...": "kubejs.startup.custom.14"}
         result, count = rewrite_content(code, mapping)
         assert count == 1
-        assert ".statusMessage = Text.translatable('kubejs.startup.custom.14')" in result
+        assert ".statusMessage = Text.translate('kubejs.startup.custom.14')" in result
 
     def test_rewrite_tell_direct(self):
         code = 'event.server.tell("Starting server frozen...")'
         mapping = {"Starting server frozen...": "kubejs.server.freeze.1"}
         result, count = rewrite_content(code, mapping)
         assert count == 1
-        assert ".tell(Text.translatable('kubejs.server.freeze.1'))" in result
+        assert ".tell(Text.translate('kubejs.server.freeze.1'))" in result
 
     def test_rewrite_tell_text_color(self):
         """For .tell(Text.red('...')), the inner Text.red() gets rewritten."""
@@ -314,7 +314,7 @@ class TestRewriter:
         mapping = {"Hyperboxes will be removed on version 6.0+": "kubejs.server.hyper.1"}
         result, count = rewrite_content(code, mapping)
         assert count == 1
-        assert "Text.translatable('kubejs.server.hyper.1').red()" in result
+        assert "Text.translate('kubejs.server.hyper.1').red()" in result
 
     def test_skips_comments(self):
         code = "// Text.of('This should not be changed')"
@@ -335,8 +335,8 @@ class TestRewriter:
         mapping = {"Energy!": "k.1", "Capacity!": "k.2"}
         result, count = rewrite_content(code, mapping)
         assert count == 2
-        assert "Text.translatable('k.1').red()" in result
-        assert "Text.translatable('k.2').green()" in result
+        assert "Text.translate('k.1').red()" in result
+        assert "Text.translate('k.2').green()" in result
 
 
 # ---------------------------------------------------------------------------
@@ -402,10 +402,10 @@ class TestIntegration:
 
         assert len(rewrite_results) > 5  # multiple files should be rewritten
 
-        # Check that at least one output file contains Text.translatable
+        # Check that at least one output file contains Text.translate
         has_translatable = False
         for r in rewrite_results:
-            if "Text.translatable(" in r.modified_content:
+            if "Text.translate(" in r.modified_content:
                 has_translatable = True
                 break
-        assert has_translatable, "No rewritten file contains Text.translatable()"
+        assert has_translatable, "No rewritten file contains Text.translate()"
