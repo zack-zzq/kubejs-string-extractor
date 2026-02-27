@@ -35,6 +35,11 @@ _DISPLAY_NAME_RE = re.compile(
     r"""\.displayName\(\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)\s*\)""",
 )
 
+# A fallback for ANY freestanding string literal
+_GENERIC_STRING_RE = re.compile(
+    r"""(?:'([^'\\]*(?:\\.[^'\\]*)*)'|"([^"\\]*(?:\\.[^"\\]*)*)"|`([^`\\]*(?:\\.[^`\\]*)*)`)"""
+)
+
 # Text.of('...') or Text.of("...")
 _TEXT_OF_RE = re.compile(
     r"""Text\.of\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
@@ -151,6 +156,31 @@ def _is_translatable(s: str) -> bool:
     if len(stripped) <= 1 and not stripped.isalpha():
         return False
 
+    return True
+
+
+def _is_probable_display_name(text: str) -> bool:
+    """Heuristic to determine if a string literal is nicely formatted enough to be an item name.
+    
+    Used only for blind extraction of generic strings when static code tracing fails.
+    """
+    if not _is_translatable(text):
+        return False
+    
+    # Must start with a capital letter or a number (e.g. "Steel Rod", "10k Fluid Cell")
+    if not re.match(r"^[A-Z0-9]", text):
+        return False
+        
+    # Exclude CamelCase or snake_case technical IDs that don't have spaces
+    if " " not in text:
+        # If it's a single word, it should be Titlecased (e.g. "Basic") or UPPERCASE ("A").
+        if not text.istitle() and not text.isupper():
+            return False
+            
+    # Exclude typical code syntax, file paths, or namespace IDs
+    if ".js" in text or ".png" in text or "kubejs:" in text or "minecraft:" in text:
+        return False
+        
     return True
 
 
@@ -283,25 +313,21 @@ def extract_from_content(
                         )
                     )
 
-    # Hardcoded overrides for create-stellar dynamic items mapping
-    if "items.js" in source_file:
-        mechanisms = ["Basic", "Copper", "Steel", "Enchanted", "Desh", "Conductive", "Refined", "Ostrum", "Mystical", "Calorite", "Creative"]
-        for mech in mechanisms:
-            mech_id = mech.lower()
-            
-            # Incomplete Mechanism
-            inc_id = f"incomplete_{mech_id}_mechanism"
-            inc_name = f"Incomplete {mech} Mechanism"
-            result.premapped_keys[f"item.kubejs.{inc_id}"] = inc_name
-            result.premapped_keys[f"block.kubejs.{inc_id}"] = inc_name
-            result.premapped_keys[f"fluid.kubejs.{inc_id}"] = inc_name
-            
-            # Complete Mechanism
-            comp_id = f"{mech_id}_mechanism"
-            comp_name = f"{mech} Mechanism"
-            result.premapped_keys[f"item.kubejs.{comp_id}"] = comp_name
-            result.premapped_keys[f"block.kubejs.{comp_id}"] = comp_name
-            result.premapped_keys[f"fluid.kubejs.{comp_id}"] = comp_name
+        # Fallback: Extract generic string literals that look like display names.
+        # This catches items hidden in function closures like `item("Steel Rod")`.
+        for m in _GENERIC_STRING_RE.finditer(line):
+            value = _extract_match(m)
+            if value and _is_probable_display_name(value):
+                already_extracted = any(e.value == value for e in result.strings if e.line_number == line_idx)
+                if not already_extracted and value not in result.premapped_keys.values():
+                    result.strings.append(
+                        ExtractedString(
+                            value=value,
+                            source_file=source_file,
+                            line_number=line_idx,
+                            pattern_type="contextual_display_name", # Special flag for keygen
+                        )
+                    )
 
     return result
 
