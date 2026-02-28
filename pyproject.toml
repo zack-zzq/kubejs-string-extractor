@@ -1,6 +1,6 @@
 [project]
 name = "kubejs-string-extractor"
-version = "1.0.9"
+version = "1.0.10"
 description = "Extract and rewrite translatable strings in KubeJS scripts"
 readme = "README.md"
 license = { text = "MIT" }
