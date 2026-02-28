@@ -107,6 +107,7 @@ _TRANSLATABLE_RE = re.compile(
 # ---------------------------------------------------------------------------
 
 _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    ("displayName", _DISPLAY_NAME_RE),
     ("Text.of", _TEXT_OF_RE),
     ("Text.color", _TEXT_COLOR_RE),
     ("append", _APPEND_RE),
