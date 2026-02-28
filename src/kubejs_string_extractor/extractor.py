@@ -190,19 +190,11 @@ def _unescape_js(s: str) -> str:
     return s.replace(r"\"", '"').replace(r"\'", "'").replace(r"\\", "\\")
 
 
-def _sanitize_template_literal(s: str) -> str:
-    """Replace JS template variables ${var} with %s for translation keys."""
-    return re.sub(r'\$\{([^}]+)\}', '%s', s)
-
-
 def _extract_match(m: re.Match[str]) -> str | None:
     """Extract the matched string from a regex match with multiple groups."""
     for raw in m.groups():
         if raw is not None:
-            val = _unescape_js(raw)
-            sanitized = _sanitize_template_literal(val)
-            print(f"DEBUG _extract_match: {val} -> {sanitized}")
-            return sanitized
+            return _unescape_js(raw)
     return None
 
 
@@ -216,8 +208,7 @@ _CREATE_DISPLAY_NAME_RE = re.compile(
 def _extract_match_group(m: re.Match[str], start_idx: int, end_idx: int) -> str | None:
     for i in range(start_idx, end_idx + 1):
         if m.group(i) is not None:
-            val = _unescape_js(m.group(i))
-            return _sanitize_template_literal(val)
+            return _unescape_js(m.group(i))
     return None
 
 # ---------------------------------------------------------------------------

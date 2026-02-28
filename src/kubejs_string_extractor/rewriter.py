@@ -23,12 +23,8 @@ class RewriteResult:
 # ---------------------------------------------------------------------------
 
 
-def _build_translate_call(key: str, raw: str) -> str:
-    """Build Text.translate('key') or Text.translate('key', [var1, var2])."""
-    variables = re.findall(r'\$\{([^}]+)\}', raw)
-    if variables:
-        vars_str = ", ".join(variables)
-        return f"Text.translate('{key}', [{vars_str}])"
+def _build_translate_call(key: str) -> str:
+    """Build Text.translate('key')."""
     return f"Text.translate('{key}')"
 
 
@@ -37,8 +33,7 @@ def _build_replacer(string_to_key: dict[str, str]):
 
     def _get_key(raw: str) -> str | None:
         value = _unescape_js(raw)
-        sanitized = re.sub(r'\$\{([^}]+)\}', '%s', value)
-        return string_to_key.get(sanitized)
+        return string_to_key.get(value)
 
     return _get_key
 
@@ -53,7 +48,7 @@ def _replace_display_name(line: str, get_key) -> str:
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        t_call = _build_translate_call(key, raw)
+        t_call = _build_translate_call(key)
         return f".displayName({t_call})"
 
     return re.sub(
@@ -73,7 +68,7 @@ def _replace_text_of(line: str, get_key) -> str:
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return _build_translate_call(key, raw)
+        return _build_translate_call(key)
 
     return re.sub(
         r"""Text\.of\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
@@ -93,7 +88,7 @@ def _replace_text_color(line: str, get_key) -> str:
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        t_call = _build_translate_call(key, raw)
+        t_call = _build_translate_call(key)
         return f"{t_call}.{color}()"
 
     return re.sub(
