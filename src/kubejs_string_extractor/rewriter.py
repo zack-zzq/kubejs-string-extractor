@@ -23,12 +23,22 @@ class RewriteResult:
 # ---------------------------------------------------------------------------
 
 
+def _build_translate_call(key: str, raw: str) -> str:
+    """Build Text.translate('key') or Text.translate('key', [var1, var2])."""
+    variables = re.findall(r'\$\{([^}]+)\}', raw)
+    if variables:
+        vars_str = ", ".join(variables)
+        return f"Text.translate('{key}', [{vars_str}])"
+    return f"Text.translate('{key}')"
+
+
 def _build_replacer(string_to_key: dict[str, str]):
     """Build a replacer function that maps string values to their translation keys."""
 
     def _get_key(raw: str) -> str | None:
         value = _unescape_js(raw)
-        return string_to_key.get(value)
+        sanitized = re.sub(r'\$\{([^}]+)\}', '%s', value)
+        return string_to_key.get(sanitized)
 
     return _get_key
 
@@ -37,14 +47,17 @@ def _replace_display_name(line: str, get_key) -> str:
     """Replace .displayName('...') with .displayName(Text.translate('key'))."""
 
     def replacer(m: re.Match) -> str:
-        raw = m.group(1) if m.group(1) is not None else m.group(2)
+        raw = next((g for g in m.groups() if g is not None), None)
+        if raw is None:
+            return m.group(0)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f".displayName(Text.translate('{key}'))"
+        t_call = _build_translate_call(key, raw)
+        return f".displayName({t_call})"
 
     return re.sub(
-        r"""\.displayName\(\s*(?:'([^']*)'|"([^"]*)")\s*\)""",
+        r"""\.displayName\(\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)\s*\)""",
         replacer,
         line,
     )
@@ -54,14 +67,16 @@ def _replace_text_of(line: str, get_key) -> str:
     """Replace Text.of('...') with Text.translate('key')."""
 
     def replacer(m: re.Match) -> str:
-        raw = m.group(1) if m.group(1) is not None else m.group(2)
+        raw = next((g for g in m.groups() if g is not None), None)
+        if raw is None:
+            return m.group(0)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f"Text.translate('{key}')"
+        return _build_translate_call(key, raw)
 
     return re.sub(
-        r"""Text\.of\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+        r"""Text\.of\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
         replacer,
         line,
     )
@@ -72,14 +87,17 @@ def _replace_text_color(line: str, get_key) -> str:
 
     def replacer(m: re.Match) -> str:
         color = m.group(1)
-        raw = m.group(2) if m.group(2) is not None else m.group(3)
+        raw = next((g for g in m.groups()[1:] if g is not None), None)
+        if raw is None:
+            return m.group(0)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f"Text.translate('{key}').{color}()"
+        t_call = _build_translate_call(key, raw)
+        return f"{t_call}.{color}()"
 
     return re.sub(
-        r"""Text\.(red|green|blue|yellow|gold)\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+        r"""Text\.(red|green|blue|yellow|gold)\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
         replacer,
         line,
     )
@@ -89,14 +107,17 @@ def _replace_append(line: str, get_key) -> str:
     """Replace .append('...') with .append(Text.translate('key'))."""
 
     def replacer(m: re.Match) -> str:
-        raw = m.group(1) if m.group(1) is not None else m.group(2)
+        raw = next((g for g in m.groups() if g is not None), None)
+        if raw is None:
+            return m.group(0)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f".append(Text.translate('{key}'))"
+        t_call = _build_translate_call(key, raw)
+        return f".append({t_call})"
 
     return re.sub(
-        r"""\.append\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+        r"""\.append\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
         replacer,
         line,
     )
@@ -107,14 +128,17 @@ def _replace_scene_text(line: str, get_key) -> str:
 
     def replacer(m: re.Match) -> str:
         number = m.group(1)
-        raw = m.group(2) if m.group(2) is not None else m.group(3)
+        raw = next((g for g in m.groups()[1:] if g is not None), None)
+        if raw is None:
+            return m.group(0)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f"scene.text({number}, Text.translate('{key}')"
+        t_call = _build_translate_call(key, raw)
+        return f"scene.text({number}, {t_call}"
 
     return re.sub(
-        r"""scene\.text\(\s*(\d+)\s*,\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*""",
+        r"""scene\.text\(\s*(\d+)\s*,\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*""",
         replacer,
         line,
     )
@@ -125,14 +149,17 @@ def _replace_announcement(line: str, get_key) -> str:
 
     def replacer(m: re.Match) -> str:
         version_part = m.group(1)
-        raw = m.group(2) if m.group(2) is not None else m.group(3)
+        raw = next((g for g in m.groups()[1:] if g is not None), None)
+        if raw is None:
+            return m.group(0)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f"addAnnouncement({version_part}, Text.translate('{key}'))"
+        t_call = _build_translate_call(key, raw)
+        return f"addAnnouncement({version_part}, {t_call})"
 
     return re.sub(
-        r"""addAnnouncement\(\s*('[^']*'|"[^"]*")\s*,\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+        r"""addAnnouncement\(\s*('[^']*'|"[^"]*"|`[^`]*`)\s*,\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
         replacer,
         line,
     )
@@ -142,14 +169,17 @@ def _replace_status_message_assign(line: str, get_key) -> str:
     """Replace .statusMessage = "..." with .statusMessage = Text.translate('key')."""
 
     def replacer(m: re.Match) -> str:
-        raw = m.group(1) if m.group(1) is not None else m.group(2)
+        raw = next((g for g in m.groups() if g is not None), None)
+        if raw is None:
+            return m.group(0)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f".statusMessage = Text.translate('{key}')"
+        t_call = _build_translate_call(key, raw)
+        return f".statusMessage = {t_call}"
 
     return re.sub(
-        r"""\.statusMessage\s*=\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")""",
+        r"""\.statusMessage\s*=\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)""",
         replacer,
         line,
     )
@@ -159,14 +189,17 @@ def _replace_tell_direct(line: str, get_key) -> str:
     """Replace .tell("...") with .tell(Text.translate('key'))."""
 
     def replacer(m: re.Match) -> str:
-        raw = m.group(1) if m.group(1) is not None else m.group(2)
+        raw = next((g for g in m.groups() if g is not None), None)
+        if raw is None:
+            return m.group(0)
         key = get_key(raw)
         if key is None:
             return m.group(0)
-        return f".tell(Text.translate('{key}'))"
+        t_call = _build_translate_call(key, raw)
+        return f".tell({t_call})"
 
     return re.sub(
-        r"""\.tell\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*\)""",
+        r"""\.tell\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)\s*\)""",
         replacer,
         line,
     )
