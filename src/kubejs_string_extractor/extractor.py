@@ -156,6 +156,11 @@ def _is_translatable(s: str) -> bool:
     # Skip very short strings (single chars, just punctuation)
     if len(stripped) <= 1 and not stripped.isalpha():
         return False
+        
+    # Skip JavaScript template literal variables (e.g. "Incomplete ${name} Mechanism")
+    # This ensures regex doesn't pull raw un-interpolated code; the Code LLM will handle these cleanly instead.
+    if "${" in stripped:
+        return False
 
     return True
 
@@ -174,6 +179,11 @@ def _is_probable_display_name(text: str) -> bool:
         
     # Exclude CamelCase or snake_case technical IDs that don't have spaces
     if " " not in text:
+        # Exclude completely UPPERCASE strings of length <= 4 
+        # because these are almost always KubeJS crafting grid rows (e.g. ["ABC", "ACD", "ABA"])
+        if text.isupper() and len(text) <= 4:
+            return False
+            
         # If it's a single word, it should be Titlecased (e.g. "Basic") or UPPERCASE ("A").
         if not text.istitle() and not text.isupper():
             return False
