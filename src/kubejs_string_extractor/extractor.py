@@ -179,12 +179,12 @@ def _is_probable_display_name(text: str) -> bool:
         
     # Exclude CamelCase or snake_case technical IDs that don't have spaces
     if " " not in text:
-        # Exclude completely UPPERCASE strings of length <= 4 
-        # because these are almost always KubeJS crafting grid rows (e.g. ["ABC", "ACD", "ABA"])
-        if text.isupper() and len(text) <= 4:
+        # Exclude completely UPPERCASE strings of ANY length if they have no spaces.
+        # These are almost always KubeJS crafting grid rows (e.g. ["ABC", "ACD", "BACAB"])
+        if text.isupper():
             return False
             
-        # If it's a single word, it should be Titlecased (e.g. "Basic") or UPPERCASE ("A").
+        # If it's a single word, it should be Titlecased (e.g. "Basic")
         if not text.istitle() and not text.isupper():
             return False
             
